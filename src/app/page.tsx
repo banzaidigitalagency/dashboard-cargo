@@ -52,14 +52,7 @@ export default function HomePage() {
                   }`}
                 >
                   <div
-                    className="relative h-32 flex items-center justify-center overflow-hidden"
-                    style={{
-                      background: disabled
-                        ? "var(--bg-2)"
-                        : b.logo && !b.logoHasBackground
-                        ? "#ffffff"
-                        : b.color,
-                    }}
+                    className="relative h-32 flex items-center justify-center overflow-hidden bg-white"
                   >
                     {/* Liseré vert au scalpel */}
                     {!disabled && (
@@ -69,27 +62,18 @@ export default function HomePage() {
                       />
                     )}
                     {b.logo ? (
-                      b.logoHasBackground ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={b.logo}
-                          alt={b.name}
-                          className="h-full object-contain"
-                        />
-                      ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={b.logo}
-                          alt={b.name}
-                          className="max-h-[72px] max-w-[70%] object-contain"
-                        />
-                      )
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={b.logo}
+                        alt={b.name}
+                        className="max-h-[56px] max-w-[60%] object-contain"
+                      />
                     ) : (
                       <div
-                        className="font-display font-semibold text-white tracking-tight"
+                        className="font-display font-semibold tracking-tight"
                         style={{
-                          fontSize: 30,
-                          textShadow: "0 1px 2px rgba(0,0,0,.15)",
+                          fontSize: 26,
+                          color: "var(--muted-2)",
                           letterSpacing: "-0.025em",
                         }}
                       >
@@ -103,11 +87,6 @@ export default function HomePage() {
                         <div className="font-display text-lg font-semibold text-[var(--ink)] truncate">
                           {b.name}
                         </div>
-                        {b.baseline && (
-                          <div className="text-[11px] uppercase tracking-wider text-[var(--muted)] mt-0.5 truncate">
-                            {b.baseline}
-                          </div>
-                        )}
                       </div>
                       {disabled ? (
                         <Badge variant="soon">Bientôt</Badge>
