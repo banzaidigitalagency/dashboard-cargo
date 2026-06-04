@@ -18,3 +18,14 @@ export function parseRange(searchParams: Record<string, string | string[] | unde
   if (from && to) return { from, to };
   return defaultRange(days);
 }
+
+/** Lit la période de comparaison (B) depuis l'URL : cmp=1, cfrom, cto. */
+export function parseCompare(
+  searchParams: Record<string, string | string[] | undefined>
+): { from: string; to: string } | null {
+  const cmp = searchParams.cmp === "1";
+  const cfrom = typeof searchParams.cfrom === "string" ? searchParams.cfrom : undefined;
+  const cto = typeof searchParams.cto === "string" ? searchParams.cto : undefined;
+  if (cmp && cfrom && cto) return { from: cfrom, to: cto };
+  return null;
+}

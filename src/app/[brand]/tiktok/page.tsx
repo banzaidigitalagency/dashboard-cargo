@@ -40,6 +40,7 @@ function mockTop(type: "dark" | "boost", n = 6): TopAd[] {
     clicks: 2400 - i * 220,
     spend: 180 - i * 15,
     ctr: (2400 - i * 220) / (120000 - i * 12000),
+    cpm: ((180 - i * 15) / (120000 - i * 12000)) * 1000,
   }));
 }
 

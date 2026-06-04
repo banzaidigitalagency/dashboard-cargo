@@ -35,6 +35,7 @@ export type TopAd = {
   clicks: number;
   spend: number;
   ctr: number;
+  cpm: number;
 };
 
 export type DashboardSnapshot = {
@@ -140,6 +141,62 @@ export async function getDashboardSnapshot(params: {
   };
 }
 
+export type TypeBreakdown = {
+  dark: KpiTotals;
+  boost: KpiTotals;
+  total: KpiTotals;
+};
+
+/** Agrège les KPI séparément pour les campagnes dark et boost d'une marque. */
+export async function getTypeBreakdown(params: {
+  brandCode: string;
+  from: string;
+  to: string;
+}): Promise<TypeBreakdown> {
+  const supabase = getSupabase();
+  const { data: campaigns, error } = await supabase
+    .from("cargo_campaigns_classified")
+    .select("campaign_id, type")
+    .eq("client_code", params.brandCode);
+  if (error) throw error;
+
+  const byType: Record<"dark" | "boost", string[]> = { dark: [], boost: [] };
+  for (const c of campaigns ?? []) {
+    const t = c.type as "dark" | "boost";
+    if (t === "dark" || t === "boost") byType[t].push(c.campaign_id as string);
+  }
+
+  const [dark, boost] = await Promise.all([
+    aggregateForCampaigns(byType.dark, params.from, params.to),
+    aggregateForCampaigns(byType.boost, params.from, params.to),
+  ]);
+
+  const total: KpiTotals = {
+    spend: dark.spend + boost.spend,
+    impressions: dark.impressions + boost.impressions,
+    clicks: dark.clicks + boost.clicks,
+    reach: dark.reach + boost.reach,
+    ctr: 0,
+    cpm: 0,
+  };
+  total.ctr = total.impressions ? total.clicks / total.impressions : 0;
+  total.cpm = total.impressions ? (total.spend / total.impressions) * 1000 : 0;
+
+  return { dark, boost, total };
+}
+
+async function aggregateForCampaigns(
+  campaignIds: string[],
+  from: string,
+  to: string
+): Promise<KpiTotals> {
+  if (campaignIds.length === 0) return emptyKpi();
+  const adIds = await adIdsForCampaigns(campaignIds);
+  if (adIds.length === 0) return emptyKpi();
+  const rows = await fetchInsightsByDate(adIds, from, to);
+  return aggregate(rows);
+}
+
 export async function getTopAds(params: {
   brandCode: string;
   from: string;
@@ -227,6 +284,7 @@ export async function getTopAds(params: {
       clicks: stats.clicks,
       spend: stats.spend,
       ctr: stats.impressions ? stats.clicks / stats.impressions : 0,
+      cpm: stats.impressions ? (stats.spend / stats.impressions) * 1000 : 0,
     });
   }
   rows.sort((a, b) => b.impressions - a.impressions);

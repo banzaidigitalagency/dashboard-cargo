@@ -3,18 +3,23 @@ import {
   getDashboardSnapshot,
   getFirstInsightDate,
   getTopAds,
+  getTypeBreakdown,
   listCargoCampaigns,
+  type DashboardSnapshot,
+  type TypeBreakdown,
 } from "@/lib/queries";
 import { KpiGrid } from "@/components/kpi-grid";
 import { DailyChart } from "@/components/daily-chart";
 import { TopAdsGrid } from "@/components/top-ads";
+import { TypeBreakdownTable } from "@/components/type-breakdown-table";
 import { CampaignFilter } from "@/components/campaign-filter";
-import { DateRangeForm } from "@/components/date-range-form";
+import { PeriodBar } from "@/components/period-bar";
 import { Hero } from "@/components/hero";
 import { Footer } from "@/components/footer";
 import { Card, CardContent, SectionHeader } from "@/components/ui";
 import { PlatformLogo, PLATFORM_META } from "@/components/platform-logo";
-import { parseRange } from "@/lib/date-range";
+import { parseRange, parseCompare } from "@/lib/date-range";
+import { formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -23,28 +28,51 @@ type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
+const EMPTY: DashboardSnapshot = {
+  current: { spend: 0, impressions: 0, clicks: 0, reach: 0, ctr: 0, cpm: 0 },
+  previous: null,
+  daily: [],
+  lastSync: null,
+};
+
 export default async function MetaPage({ params, searchParams }: Props) {
   const { brand } = await params;
   const sp = await searchParams;
   const info = getBrand(brand)!;
   const { from, to } = parseRange(sp);
+  const compareRange = parseCompare(sp);
   const selectedIds =
     typeof sp.campaigns === "string" && sp.campaigns.length ? sp.campaigns.split(",") : [];
 
   const campaigns = await listCargoCampaigns(brand).catch(() => []);
   const filter = selectedIds.length > 0 ? { campaignIds: selectedIds } : {};
 
-  const [snap, topDark, topBoost, earliest] = await Promise.all([
-    getDashboardSnapshot({ brandCode: brand, from, to, ...filter }).catch(() => ({
-      current: { spend: 0, impressions: 0, clicks: 0, reach: 0, ctr: 0, cpm: 0 },
-      previous: null,
-      daily: [],
-      lastSync: null,
-    })),
+  const emptyBreakdown: TypeBreakdown = {
+    dark: EMPTY.current,
+    boost: EMPTY.current,
+    total: EMPTY.current,
+  };
+
+  const [snap, topDark, topBoost, earliest, breakdown, compareSnap] = await Promise.all([
+    getDashboardSnapshot({ brandCode: brand, from, to, ...filter }).catch(() => EMPTY),
     getTopAds({ brandCode: brand, from, to, type: "dark", limit: 6 }).catch(() => []),
     getTopAds({ brandCode: brand, from, to, type: "boost", limit: 6 }).catch(() => []),
     getFirstInsightDate(brand).catch(() => null),
+    getTypeBreakdown({ brandCode: brand, from, to }).catch(() => emptyBreakdown),
+    compareRange
+      ? getDashboardSnapshot({ brandCode: brand, from: compareRange.from, to: compareRange.to, ...filter }).catch(
+          () => null
+        )
+      : Promise.resolve(null),
   ]);
+
+  const compare =
+    compareRange && compareSnap
+      ? {
+          totals: compareSnap.current,
+          label: `${formatDate(compareRange.from)} – ${formatDate(compareRange.to)}`,
+        }
+      : null;
 
   return (
     <>
@@ -59,7 +87,7 @@ export default async function MetaPage({ params, searchParams }: Props) {
 
       <section className="pb-8">
         <Card>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <PlatformLogo platform="meta" size={36} />
@@ -70,15 +98,17 @@ export default async function MetaPage({ params, searchParams }: Props) {
                   <div className="text-xs text-[var(--muted)]">{PLATFORM_META.meta.subtitle}</div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <CampaignFilter campaigns={campaigns} selected={selectedIds} />
-                <DateRangeForm
-                  from={from}
-                  to={to}
-                  variant="light"
-                  earliestDate={earliest ?? undefined}
-                />
-              </div>
+              <CampaignFilter campaigns={campaigns} selected={selectedIds} />
+            </div>
+            <div className="border-t border-[var(--hairline)] pt-4">
+              <PeriodBar
+                from={from}
+                to={to}
+                cfrom={compareRange?.from}
+                cto={compareRange?.to}
+                comparing={!!compareRange}
+                earliestDate={earliest ?? undefined}
+              />
             </div>
           </CardContent>
         </Card>
@@ -86,9 +116,23 @@ export default async function MetaPage({ params, searchParams }: Props) {
 
       <section className="space-y-3 pb-10">
         <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
-          /01 · Indicateurs Meta
+          <span className="text-[var(--green-600)] mr-1">/01</span> Indicateurs Meta
         </div>
-        <KpiGrid totals={snap.current} previous={snap.previous} daily={snap.daily} />
+        <KpiGrid
+          totals={snap.current}
+          previous={snap.previous}
+          daily={snap.daily}
+          compare={compare}
+        />
+      </section>
+
+      <section className="pb-10">
+        <SectionHeader
+          eyebrow="Dark vs Boost"
+          title="Répartition par type"
+          subtitle="Budget et performance détaillés des campagnes dark et des boosts sur la période."
+        />
+        <TypeBreakdownTable data={breakdown} />
       </section>
 
       <section className="pb-10">

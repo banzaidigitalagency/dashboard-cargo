@@ -6,6 +6,8 @@ type Props = {
   totals: KpiTotals;
   previous?: KpiTotals | null;
   daily?: DailyPoint[];
+  /** Mode comparé explicite : compare à `compare.totals` (période B) au lieu de previous. */
+  compare?: { totals: KpiTotals; label: string } | null;
 };
 
 type Metric = {
@@ -38,16 +40,21 @@ function formatDelta(d: number | null): string {
   return `${sign}${pct.toFixed(pct >= 10 || pct <= -10 ? 0 : 1)} %`;
 }
 
-export function KpiGrid({ totals, previous, daily }: Props) {
+export function KpiGrid({ totals, previous, daily, compare }: Props) {
+  const comparing = !!compare;
   return (
     <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
       {METRICS.map((m) => {
         const curr = m.derive(totals);
-        const prev = previous ? m.derive(previous) : null;
-        const delta = pctChange(curr, prev);
-        const dataPoints = !m.noSparkline && daily
-          ? daily.map((d) => (m.key === "ctr" || m.key === "cpm" ? 0 : Number(d[m.key as keyof DailyPoint] ?? 0)))
-          : [];
+        // En mode comparé, le delta se calcule vs la période B; sinon vs previous.
+        const ref = comparing ? m.derive(compare!.totals) : previous ? m.derive(previous) : null;
+        const delta = pctChange(curr, ref);
+        const dataPoints =
+          !m.noSparkline && daily
+            ? daily.map((d) =>
+                m.key === "ctr" || m.key === "cpm" ? 0 : Number(d[m.key as keyof DailyPoint] ?? 0)
+              )
+            : [];
 
         return (
           <div
@@ -59,9 +66,7 @@ export function KpiGrid({ totals, previous, daily }: Props) {
             <div className="absolute top-0 left-0 right-0 h-[3px] bg-[var(--green)]" aria-hidden />
 
             <div className="flex items-start justify-between gap-2">
-              <div className="text-[10px] uppercase tracking-[0.18em] text-white/60">
-                {m.label}
-              </div>
+              <div className="text-[10px] uppercase tracking-[0.18em] text-white/60">{m.label}</div>
               {delta !== null ? (
                 <div
                   className={`text-[10px] font-medium tabular-nums tracking-tight px-1.5 py-0.5 rounded-full ${
@@ -79,11 +84,16 @@ export function KpiGrid({ totals, previous, daily }: Props) {
               {m.format(curr)}
             </div>
 
-            <div className="mt-4 h-8">
-              {dataPoints.length > 1 && (
-                <Sparkline data={dataPoints} width={220} height={32} />
-              )}
-            </div>
+            {comparing ? (
+              <div className="mt-3 text-[11px] text-white/55 tabular-nums">
+                <span className="uppercase tracking-wider text-white/40">{compare!.label} : </span>
+                {m.format(m.derive(compare!.totals))}
+              </div>
+            ) : (
+              <div className="mt-4 h-8">
+                {dataPoints.length > 1 && <Sparkline data={dataPoints} width={220} height={32} />}
+              </div>
+            )}
           </div>
         );
       })}

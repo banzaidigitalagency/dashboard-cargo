@@ -37,9 +37,10 @@ export function TopAdsGrid({ ads, emptyLabel }: { ads: TopAd[]; emptyLabel: stri
               </div>
               <Badge variant={ad.type === "boost" ? "boost" : "dark"}>{ad.type}</Badge>
             </div>
-            <div className="grid grid-cols-3 gap-3 pt-3 border-t border-[var(--hairline)]">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-3 pt-3 border-t border-[var(--hairline)]">
               <Kpi label="Impressions" value={formatNumber(ad.impressions)} />
               <Kpi label="CTR" value={formatPercent(ad.ctr)} />
+              <Kpi label="CPM" value={formatCurrency(ad.cpm)} />
               <Kpi label="Dépense" value={formatCurrency(ad.spend)} />
             </div>
           </CardContent>
