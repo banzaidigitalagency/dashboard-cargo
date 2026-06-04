@@ -3,7 +3,6 @@ import { BRANDS } from "@/lib/constants";
 import { TopBar } from "@/components/top-bar";
 import { Badge } from "@/components/ui";
 import { Footer } from "@/components/footer";
-import { BrandTile } from "@/components/brand-tile";
 
 export default function HomePage() {
   return (
@@ -54,17 +53,37 @@ export default function HomePage() {
                 >
                   <div
                     className="relative h-32 flex items-center justify-center overflow-hidden"
-                    style={{ background: disabled ? "var(--bg-2)" : b.color }}
+                    style={{
+                      background: disabled
+                        ? "var(--bg-2)"
+                        : b.logo && !b.logoHasBackground
+                        ? "#ffffff"
+                        : b.color,
+                    }}
                   >
                     {/* Liseré vert au scalpel */}
                     {!disabled && (
                       <div
-                        className="absolute top-0 left-0 right-0 h-[3px] bg-[var(--green)]"
+                        className="absolute top-0 left-0 right-0 h-[3px] bg-[var(--green)] z-10"
                         aria-hidden
                       />
                     )}
                     {b.logo ? (
-                      <BrandTile brand={b} size={120} />
+                      b.logoHasBackground ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={b.logo}
+                          alt={b.name}
+                          className="h-full object-contain"
+                        />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={b.logo}
+                          alt={b.name}
+                          className="max-h-[72px] max-w-[70%] object-contain"
+                        />
+                      )
                     ) : (
                       <div
                         className="font-display font-semibold text-white tracking-tight"

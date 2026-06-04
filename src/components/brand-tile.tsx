@@ -1,6 +1,8 @@
 /**
- * Tuile carrée de marque : affiche le PNG du logo si dispo, sinon
- * fallback texte sur fond brand color (initiales ou nom complet).
+ * Tuile carrée de marque : affiche le logo si dispo, sinon fallback texte
+ * sur fond brand color. Gère deux cas :
+ *  - logoHasBackground=true  → le logo a déjà son fond (carré coloré), on le pose plein cadre
+ *  - logoHasBackground=false → logo transparent/blanc, on le pose sur fond blanc avec marge
  */
 import type { Brand } from "@/lib/constants";
 
@@ -11,10 +13,11 @@ export function BrandTile({
 }: {
   brand: Brand;
   size?: number;
-  /** Si vrai et qu'il n'y a pas de PNG, affiche le nom plutôt que l'initiale. */
+  /** Si vrai et qu'il n'y a pas de logo, affiche le nom plutôt que l'initiale. */
   showFull?: boolean;
 }) {
   if (brand.logo) {
+    const hasBg = brand.logoHasBackground;
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
@@ -22,11 +25,13 @@ export function BrandTile({
         alt={brand.name}
         width={size}
         height={size}
-        className="rounded-md object-contain bg-white"
+        className="rounded-md"
         style={{
-          padding: Math.max(4, size * 0.1),
           width: size,
           height: size,
+          objectFit: hasBg ? "cover" : "contain",
+          background: hasBg ? "transparent" : "#ffffff",
+          padding: hasBg ? 0 : Math.max(4, size * 0.12),
         }}
       />
     );

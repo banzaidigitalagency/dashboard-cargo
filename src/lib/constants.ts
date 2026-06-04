@@ -10,10 +10,14 @@ export type Brand = {
   contrast: "white" | "navy";
   /** Chemin vers le logo PNG/SVG dans /public. Optionnel. */
   logo?: string;
+  /**
+   * Le logo a-t-il déjà son propre fond (carré coloré) ?
+   * Si oui, on l'affiche tel quel sans bandeau couleur derrière.
+   * Si non (logo transparent/blanc), on le pose sur un fond clair.
+   */
+  logoHasBackground?: boolean;
 };
 
-// Pour activer les vrais logos, dépose les 4 PNG dans public/brands/{code}.png
-// puis ajoute `logo: "/brands/<code>.png"` sur l'entrée correspondante.
 export const BRANDS: Brand[] = [
   {
     code: "sitram",
@@ -22,6 +26,8 @@ export const BRANDS: Brand[] = [
     available: true,
     color: "#0E2A6E", // navy proche du logo Sitram
     contrast: "white",
+    logo: "/brands/sitram.png",
+    logoHasBackground: false, // logo sur fond blanc/transparent
   },
   {
     code: "cedif",
@@ -30,6 +36,8 @@ export const BRANDS: Brand[] = [
     available: true,
     color: "#1FA6E0", // cyan vif Cédif
     contrast: "white",
+    logo: "/brands/cedif.png",
+    logoHasBackground: true, // logo déjà sur carré cyan
   },
   {
     code: "ostaria",
@@ -38,6 +46,8 @@ export const BRANDS: Brand[] = [
     available: true,
     color: "#0F0F10", // noir profond Ostaria
     contrast: "white",
+    logo: "/brands/ostaria.png",
+    logoHasBackground: false, // logo noir sur fond blanc
   },
   {
     code: "orok",
@@ -46,6 +56,8 @@ export const BRANDS: Brand[] = [
     available: true,
     color: "#2B2B2B", // gris anthracite OROK
     contrast: "white",
+    logo: "/brands/orok.jpg",
+    logoHasBackground: true, // logo déjà sur fond anthracite
   },
   {
     code: "promodis",
