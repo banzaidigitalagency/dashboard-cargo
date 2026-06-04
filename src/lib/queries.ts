@@ -197,6 +197,100 @@ async function aggregateForCampaigns(
   return aggregate(rows);
 }
 
+export type BudgetLine = {
+  platform: "meta" | "tiktok" | "dv360";
+  type: "dark" | "boost" | null;
+  label: string;
+  periodStart: string;
+  periodEnd: string;
+  budget: number;
+  spent: number;
+  remaining: number;
+  pct: number; // 0..1+ (peut dépasser 1 si surconsommé)
+  hasActuals: boolean; // false si la plateforme n'est pas encore synchronisée
+};
+
+export type BudgetStatus = {
+  lines: BudgetLine[];
+  totals: { budget: number; spent: number; remaining: number; pct: number };
+  asOf: string; // date jusqu'à laquelle on a compté le dépensé
+};
+
+/**
+ * Statut budgétaire d'une marque : budgets du plan validé vs dépensé réel.
+ * Le dépensé Meta (dark/boost) est calculé sur la période du plan jusqu'à aujourd'hui.
+ * Les plateformes non synchronisées (TikTok, DV360) affichent un dépensé à 0.
+ */
+export async function getBudgetStatus(brandCode: string): Promise<BudgetStatus | null> {
+  const supabase = getSupabase();
+  const { data: rows, error } = await supabase
+    .from("cargo_budgets")
+    .select("platform, type, label, period_start, period_end, budget_media")
+    .eq("client_code", brandCode);
+  if (error) throw error;
+  if (!rows || rows.length === 0) return null;
+
+  const today = todayISO();
+
+  // Fenêtre de comptage du dépensé Meta = du plus tôt period_start au plus tard min(period_end, today)
+  const metaStart = rows
+    .map((r) => r.period_start as string)
+    .reduce((a, b) => (a < b ? a : b));
+  const metaEndCap = rows
+    .map((r) => r.period_end as string)
+    .reduce((a, b) => (a > b ? a : b));
+  const metaEnd = metaEndCap < today ? metaEndCap : today;
+
+  let metaBreakdown: TypeBreakdown | null = null;
+  const needsMeta = rows.some((r) => r.platform === "meta");
+  if (needsMeta) {
+    metaBreakdown = await getTypeBreakdown({ brandCode, from: metaStart, to: metaEnd }).catch(
+      () => null
+    );
+  }
+
+  const lines: BudgetLine[] = rows.map((r) => {
+    const platform = r.platform as "meta" | "tiktok" | "dv360";
+    const type = (r.type as "dark" | "boost" | null) ?? null;
+    const budget = Number(r.budget_media ?? 0);
+    let spent = 0;
+    let hasActuals = false;
+    if (platform === "meta" && metaBreakdown) {
+      hasActuals = true;
+      if (type === "dark") spent = metaBreakdown.dark.spend;
+      else if (type === "boost") spent = metaBreakdown.boost.spend;
+      else spent = metaBreakdown.total.spend;
+    }
+    const remaining = budget - spent;
+    const pct = budget > 0 ? spent / budget : 0;
+    return {
+      platform,
+      type,
+      label: (r.label as string) ?? "",
+      periodStart: r.period_start as string,
+      periodEnd: r.period_end as string,
+      budget,
+      spent,
+      remaining,
+      pct,
+      hasActuals,
+    };
+  });
+
+  const totBudget = lines.reduce((s, l) => s + l.budget, 0);
+  const totSpent = lines.reduce((s, l) => s + l.spent, 0);
+  return {
+    lines,
+    totals: {
+      budget: totBudget,
+      spent: totSpent,
+      remaining: totBudget - totSpent,
+      pct: totBudget > 0 ? totSpent / totBudget : 0,
+    },
+    asOf: metaEnd,
+  };
+}
+
 export async function getTopAds(params: {
   brandCode: string;
   from: string;
@@ -373,4 +467,8 @@ function toISO(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+function todayISO(): string {
+  return toISO(new Date());
 }

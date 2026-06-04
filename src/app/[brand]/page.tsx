@@ -3,11 +3,14 @@ import { getBrand } from "@/lib/constants";
 import {
   getDashboardSnapshot,
   getFirstInsightDate,
+  getBudgetStatus,
   type DashboardSnapshot,
+  type BudgetStatus,
 } from "@/lib/queries";
 import { KpiGrid } from "@/components/kpi-grid";
 import { Hero } from "@/components/hero";
 import { Footer } from "@/components/footer";
+import { BudgetWidget } from "@/components/budget-widget";
 import { Card, CardContent, SectionHeader } from "@/components/ui";
 import { parseRange, parseCompare } from "@/lib/date-range";
 import { PlatformLogo } from "@/components/platform-logo";
@@ -38,13 +41,15 @@ export default async function BrandOverview({ params, searchParams }: Props) {
   let snap: DashboardSnapshot = EMPTY;
   let compareSnap: DashboardSnapshot | null = null;
   let earliest: string | null = null;
+  let budget: BudgetStatus | null = null;
   try {
-    [snap, earliest, compareSnap] = await Promise.all([
+    [snap, earliest, compareSnap, budget] = await Promise.all([
       getDashboardSnapshot({ brandCode: brand, from, to }),
       getFirstInsightDate(brand),
       compareRange
         ? getDashboardSnapshot({ brandCode: brand, from: compareRange.from, to: compareRange.to })
         : Promise.resolve(null),
+      getBudgetStatus(brand).catch(() => null),
     ]);
   } catch {}
 
@@ -93,6 +98,17 @@ export default async function BrandOverview({ params, searchParams }: Props) {
           compare={compare}
         />
       </section>
+
+      {budget && (
+        <section className="space-y-4 pb-12">
+          <SectionHeader
+            eyebrow="Budget annuel"
+            title="Suivi budgétaire 2026"
+            subtitle="Budget média validé vs dépensé réel, par plateforme et type. Le restant indique la marge disponible."
+          />
+          <BudgetWidget status={budget} />
+        </section>
+      )}
 
       <section className="space-y-4 pb-10">
         <SectionHeader
