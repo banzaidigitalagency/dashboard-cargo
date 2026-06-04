@@ -2,53 +2,58 @@ import { Badge, Card, CardContent, EmptyState } from "@/components/ui";
 import type { TopAd } from "@/lib/queries";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
 
-export function TopAdsGrid({ title, ads, emptyLabel }: { title: string; ads: TopAd[]; emptyLabel: string }) {
+export function TopAdsGrid({ ads, emptyLabel }: { ads: TopAd[]; emptyLabel: string }) {
+  if (ads.length === 0) {
+    return <EmptyState title={emptyLabel} description="Les données apparaîtront dès qu'elles seront disponibles." />;
+  }
   return (
-    <section>
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-500">{title}</h2>
-      {ads.length === 0 ? (
-        <EmptyState title={emptyLabel} description="Les données apparaîtront dès qu'elles seront disponibles." />
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {ads.map((ad) => (
-            <Card key={ad.ad_id} className="overflow-hidden">
-              <div className="aspect-video w-full bg-neutral-100 flex items-center justify-center text-xs text-neutral-400">
-                {ad.preview_url ? (
-                  // Meta preview_url returns HTML iframe-able content, fallback to link
-                  <a href={ad.preview_url} target="_blank" rel="noreferrer" className="underline">
-                    Voir la créa
-                  </a>
-                ) : (
-                  <span>Aperçu indisponible</span>
-                )}
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {ads.map((ad, idx) => (
+        <Card key={ad.ad_id} className="overflow-hidden">
+          <div className="relative aspect-video w-full bg-[var(--bg-2)] flex items-center justify-center text-xs text-[var(--muted-2)]">
+            <div className="absolute top-2 left-2 font-display text-sm font-semibold text-[var(--green-600)] tabular-nums">
+              /0{idx + 1}
+            </div>
+            {ad.preview_url ? (
+              <a
+                href={ad.preview_url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[var(--navy)] hover:text-[var(--green-600)] underline underline-offset-2"
+              >
+                Voir la créa
+              </a>
+            ) : (
+              <span>Aperçu indisponible</span>
+            )}
+          </div>
+          <CardContent>
+            <div className="flex items-start justify-between gap-2 mb-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium line-clamp-2 text-[var(--ink)]">{ad.ad_name}</div>
+                <div className="mt-1 text-[11px] uppercase tracking-wider text-[var(--muted)] line-clamp-1">
+                  {ad.campaign_name}
+                </div>
               </div>
-              <CardContent>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium line-clamp-2">{ad.ad_name}</div>
-                    <div className="mt-1 text-xs text-neutral-500 line-clamp-1">{ad.campaign_name}</div>
-                  </div>
-                  <Badge variant={ad.type === "boost" ? "boost" : "dark"}>{ad.type}</Badge>
-                </div>
-                <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-                  <div>
-                    <div className="text-neutral-500">Impressions</div>
-                    <div className="font-medium tabular-nums">{formatNumber(ad.impressions)}</div>
-                  </div>
-                  <div>
-                    <div className="text-neutral-500">CTR</div>
-                    <div className="font-medium tabular-nums">{formatPercent(ad.ctr)}</div>
-                  </div>
-                  <div>
-                    <div className="text-neutral-500">Dépense</div>
-                    <div className="font-medium tabular-nums">{formatCurrency(ad.spend)}</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </section>
+              <Badge variant={ad.type === "boost" ? "boost" : "dark"}>{ad.type}</Badge>
+            </div>
+            <div className="grid grid-cols-3 gap-3 pt-3 border-t border-[var(--hairline)]">
+              <Kpi label="Impressions" value={formatNumber(ad.impressions)} />
+              <Kpi label="CTR" value={formatPercent(ad.ctr)} />
+              <Kpi label="Dépense" value={formatCurrency(ad.spend)} />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function Kpi({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-wider text-[var(--muted)]">{label}</div>
+      <div className="text-sm font-medium tabular-nums text-[var(--ink)]">{value}</div>
+    </div>
   );
 }

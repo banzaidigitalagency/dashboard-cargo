@@ -1,7 +1,10 @@
 import { getBrand } from "@/lib/constants";
 import { KpiGrid } from "@/components/kpi-grid";
 import { DailyChart } from "@/components/daily-chart";
-import { Card, CardContent, Badge } from "@/components/ui";
+import { Card, CardContent, Badge, SectionHeader } from "@/components/ui";
+import { Hero } from "@/components/hero";
+import { Footer } from "@/components/footer";
+import { PlatformLogo, PLATFORM_META } from "@/components/platform-logo";
 import type { DailyPoint } from "@/lib/queries";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
@@ -15,7 +18,12 @@ function mockDaily(): DailyPoint[] {
     d.setDate(d.getDate() - i);
     const iso = d.toISOString().slice(0, 10);
     const base = 22000 + Math.cos(i / 4) * 4000 + Math.random() * 2000;
-    out.push({ date: iso, impressions: Math.round(base), clicks: Math.round(base / 200), spend: Math.round(base / 400) });
+    out.push({
+      date: iso,
+      impressions: Math.round(base),
+      clicks: Math.round(base / 200),
+      spend: Math.round(base / 400),
+    });
   }
   return out;
 }
@@ -29,7 +37,11 @@ const MOCK_PLACEMENTS = [
   { name: "Autres", impressions: 71_200, clicks: 315, spend: 150 },
 ];
 
-export default async function ProgrammaticPage({ params }: { params: Promise<{ brand: string }> }) {
+export default async function ProgrammaticPage({
+  params,
+}: {
+  params: Promise<{ brand: string }>;
+}) {
   const { brand } = await params;
   const info = getBrand(brand)!;
   const totals = {
@@ -40,52 +52,96 @@ export default async function ProgrammaticPage({ params }: { params: Promise<{ b
     ctr: 4215 / 730500,
     cpm: (1660 / 730500) * 1000,
   };
+  const daily = mockDaily();
 
   return (
-    <div className="space-y-8">
-      <header>
-        <div className="flex items-center gap-2">
-          <div className="text-xs uppercase tracking-wide text-neutral-500">Programmatique · DV360</div>
-          <Badge variant="muted">Aperçu — données de démonstration</Badge>
-        </div>
-        <h1 className="text-2xl font-semibold tracking-tight mt-1">{info.name}</h1>
-        <p className="text-sm text-neutral-500 mt-1">
-          Advertiser DV360 <span className="font-mono">CARGO (8192209878)</span>. Ingestion en cours côté Cargo.
-        </p>
-      </header>
+    <>
+      <Hero
+        eyebrow={`Programmatique · ${info.name}`}
+        title="Display & vidéo via DV360."
+        accent="Branchement en cours."
+        from={daily[0].date}
+        to={daily[daily.length - 1].date}
+      />
 
-      <KpiGrid totals={totals} />
-
-      <Card>
-        <CardContent>
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-sm font-semibold">Impressions quotidiennes (mock)</div>
-          </div>
-          <DailyChart data={mockDaily()} metric="impressions" />
-        </CardContent>
-      </Card>
-
-      <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-500">Top emplacements (démo)</h2>
+      <section className="pb-8">
         <Card>
-          <div className="divide-y divide-neutral-200">
-            <div className="grid grid-cols-4 gap-4 px-5 py-3 text-xs uppercase tracking-wide text-neutral-500">
-              <div className="col-span-1">Emplacement</div>
-              <div className="text-right">Impressions</div>
-              <div className="text-right">Clics</div>
-              <div className="text-right">Dépense</div>
+          <CardContent>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <PlatformLogo platform="dv360" size={36} />
+                <div>
+                  <div className="font-display font-semibold text-[var(--ink)]">
+                    {PLATFORM_META.dv360.name}
+                  </div>
+                  <div className="text-xs text-[var(--muted)]">
+                    Advertiser <span className="font-mono">CARGO · 8192209878</span>
+                  </div>
+                </div>
+              </div>
+              <Badge variant="soon">Aperçu — données fictives</Badge>
             </div>
-            {MOCK_PLACEMENTS.map((p) => (
-              <div key={p.name} className="grid grid-cols-4 gap-4 px-5 py-3 text-sm">
-                <div className="col-span-1 font-medium">{p.name}</div>
-                <div className="text-right tabular-nums">{formatNumber(p.impressions)}</div>
-                <div className="text-right tabular-nums">{formatNumber(p.clicks)}</div>
-                <div className="text-right tabular-nums">{formatCurrency(p.spend)}</div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="space-y-3 pb-10">
+        <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
+          /03 · Indicateurs DV360
+        </div>
+        <KpiGrid totals={totals} previous={null} daily={daily} />
+      </section>
+
+      <section className="pb-10">
+        <SectionHeader
+          eyebrow="Tendance"
+          title="Impressions quotidiennes — maquette"
+          subtitle="Forme du dashboard une fois l'ingestion DV360 activée pour Cargo."
+        />
+        <Card>
+          <CardContent>
+            <DailyChart data={daily} metric="impressions" />
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="pb-10">
+        <SectionHeader
+          eyebrow="Top emplacements"
+          title="Sites & publishers — démo"
+          subtitle="Classement par impressions. Restitution finale dès branchement DV360."
+        />
+        <Card className="overflow-hidden">
+          <div className="divide-y divide-[var(--hairline)]">
+            <div className="grid grid-cols-12 gap-4 px-6 py-3 text-[10px] uppercase tracking-[0.14em] text-[var(--muted)]">
+              <div className="col-span-1">Rang</div>
+              <div className="col-span-5">Emplacement</div>
+              <div className="col-span-2 text-right">Impressions</div>
+              <div className="col-span-2 text-right">Clics</div>
+              <div className="col-span-2 text-right">Dépense</div>
+            </div>
+            {MOCK_PLACEMENTS.map((p, i) => (
+              <div key={p.name} className="grid grid-cols-12 gap-4 px-6 py-3 text-sm items-center">
+                <div className="col-span-1 font-display text-sm font-semibold text-[var(--green-600)] tabular-nums">
+                  /0{i + 1}
+                </div>
+                <div className="col-span-5 font-medium text-[var(--ink)]">{p.name}</div>
+                <div className="col-span-2 text-right tabular-nums text-[var(--ink-2)]">
+                  {formatNumber(p.impressions)}
+                </div>
+                <div className="col-span-2 text-right tabular-nums text-[var(--ink-2)]">
+                  {formatNumber(p.clicks)}
+                </div>
+                <div className="col-span-2 text-right tabular-nums text-[var(--ink-2)]">
+                  {formatCurrency(p.spend)}
+                </div>
               </div>
             ))}
           </div>
         </Card>
       </section>
-    </div>
+
+      <Footer brandName={info.name} />
+    </>
   );
 }

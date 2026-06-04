@@ -2,7 +2,10 @@ import { getBrand } from "@/lib/constants";
 import { KpiGrid } from "@/components/kpi-grid";
 import { DailyChart } from "@/components/daily-chart";
 import { TopAdsGrid } from "@/components/top-ads";
-import { Card, CardContent, Badge } from "@/components/ui";
+import { Card, CardContent, Badge, SectionHeader } from "@/components/ui";
+import { Hero } from "@/components/hero";
+import { Footer } from "@/components/footer";
+import { PlatformLogo, PLATFORM_META } from "@/components/platform-logo";
 import type { DailyPoint, TopAd } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +18,12 @@ function mockDaily(): DailyPoint[] {
     d.setDate(d.getDate() - i);
     const iso = d.toISOString().slice(0, 10);
     const base = 6000 + Math.sin(i / 3) * 1500 + Math.random() * 1200;
-    out.push({ date: iso, impressions: Math.round(base), clicks: Math.round(base / 90), spend: Math.round(base / 180) });
+    out.push({
+      date: iso,
+      impressions: Math.round(base),
+      clicks: Math.round(base / 90),
+      spend: Math.round(base / 180),
+    });
   }
   return out;
 }
@@ -47,32 +55,77 @@ export default async function TikTokPage({ params }: { params: Promise<{ brand: 
     cpm: (920 / 185200) * 1000,
   };
   const daily = mockDaily();
+
   return (
-    <div className="space-y-8">
-      <header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="text-xs uppercase tracking-wide text-neutral-500">TikTok Ads</div>
-            <Badge variant="muted">Aperçu — données de démonstration</Badge>
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight mt-1">{info.name}</h1>
-          <p className="text-sm text-neutral-500 mt-1">Le branchement TikTok est en cours. Ces chiffres sont fictifs.</p>
+    <>
+      <Hero
+        eyebrow={`TikTok Ads · ${info.name}`}
+        title="Aperçu visuel."
+        accent="Branchement en cours."
+        from={daily[0].date}
+        to={daily[daily.length - 1].date}
+      />
+
+      <section className="pb-8">
+        <Card>
+          <CardContent>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <PlatformLogo platform="tiktok" size={36} />
+                <div>
+                  <div className="font-display font-semibold text-[var(--ink)]">
+                    {PLATFORM_META.tiktok.name}
+                  </div>
+                  <div className="text-xs text-[var(--muted)]">
+                    {PLATFORM_META.tiktok.subtitle}
+                  </div>
+                </div>
+              </div>
+              <Badge variant="soon">Aperçu — données fictives</Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="space-y-3 pb-10">
+        <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
+          /02 · Indicateurs TikTok
         </div>
-      </header>
+        <KpiGrid totals={totals} previous={null} daily={daily} />
+      </section>
 
-      <KpiGrid totals={totals} />
+      <section className="pb-10">
+        <SectionHeader
+          eyebrow="Tendance"
+          title="Impressions quotidiennes — maquette"
+          subtitle="Forme du dashboard une fois l'ingestion TikTok activée."
+        />
+        <Card>
+          <CardContent>
+            <DailyChart data={daily} metric="impressions" />
+          </CardContent>
+        </Card>
+      </section>
 
-      <Card>
-        <CardContent>
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-sm font-semibold">Impressions quotidiennes (mock)</div>
-          </div>
-          <DailyChart data={daily} metric="impressions" />
-        </CardContent>
-      </Card>
+      <section className="pb-10">
+        <SectionHeader
+          eyebrow="Top créas"
+          title="Pubs dark — démo"
+          subtitle="Affichage final une fois les ads en base."
+        />
+        <TopAdsGrid ads={mockTop("dark")} emptyLabel="—" />
+      </section>
 
-      <TopAdsGrid title="Top pubs (dark) — démo" ads={mockTop("dark")} emptyLabel="—" />
-      <TopAdsGrid title="Top boosts — démo" ads={mockTop("boost")} emptyLabel="—" />
-    </div>
+      <section className="pb-10">
+        <SectionHeader
+          eyebrow="Boosts"
+          title="Top boosts — démo"
+          subtitle="Affichage final une fois les ads en base."
+        />
+        <TopAdsGrid ads={mockTop("boost")} emptyLabel="—" />
+      </section>
+
+      <Footer brandName={info.name} />
+    </>
   );
 }

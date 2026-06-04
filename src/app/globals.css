@@ -1,9 +1,74 @@
 @import "tailwindcss";
 
+/* SMART charter tokens */
+:root {
+  --navy: #000F2E;
+  --navy-700: #0F1E3A;
+  --navy-600: #182847;
+  --navy-500: #223256;
+  --green: #66FF99;
+  --green-600: #3DEB7C;
+  --green-200: #D6FFE4;
+  --bg: #ffffff;
+  --bg-2: #f4f6f9;
+  --card: #ffffff;
+  --card-warm: #f4f6f9;
+  --ink: #000F2E;
+  --ink-2: #0F1E3A;
+  --muted: #5b6678;
+  --muted-2: #97a0b0;
+  --hairline: rgba(0, 15, 46, 0.10);
+  --hairline-strong: rgba(0, 15, 46, 0.18);
+  --pos: #1f9d57;
+  --neg: #5b6678;
+  --shadow-card: 0 1px 2px rgba(0, 15, 46, 0.04), 0 10px 30px rgba(0, 15, 46, 0.05);
+}
+
 @theme inline {
+  --color-navy: var(--navy);
+  --color-navy-700: var(--navy-700);
+  --color-navy-600: var(--navy-600);
+  --color-navy-500: var(--navy-500);
+  --color-green: var(--green);
+  --color-green-600: var(--green-600);
+  --color-green-200: var(--green-200);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-muted-2: var(--muted-2);
+  --color-hairline: var(--hairline);
+  --color-pos: var(--pos);
+  --color-neg: var(--neg);
+  --font-display: var(--font-display);
   --font-sans: var(--font-sans);
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--ink);
 }
 
 body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-display {
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.tnum,
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Print: hide top-bar actions, avoid card breaks */
+@media print {
+  .no-print { display: none !important; }
+  .card, [data-card] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
 }

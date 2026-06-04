@@ -37,6 +37,15 @@ export type TopAd = {
   ctr: number;
 };
 
+export type DashboardSnapshot = {
+  current: KpiTotals;
+  /** Même longueur de fenêtre juste avant `from`. `null` si pas de données comparables. */
+  previous: KpiTotals | null;
+  daily: DailyPoint[];
+  /** Date max d'insight sur la marque (toutes plateformes confondues). */
+  lastSync: string | null;
+};
+
 export async function listCargoCampaigns(brandCode: string) {
   const supabase = getSupabase();
   const { data, error } = await supabase
@@ -48,85 +57,64 @@ export async function listCargoCampaigns(brandCode: string) {
   return (data ?? []) as CampaignRow[];
 }
 
-export async function getKpiTotals(params: {
+export async function getDashboardSnapshot(params: {
   brandCode: string;
   from: string;
   to: string;
   campaignIds?: string[];
-}): Promise<KpiTotals> {
-  const supabase = getSupabase();
+}): Promise<DashboardSnapshot> {
   const campaigns = await resolveCampaignIds(params);
-  if (campaigns.length === 0) return emptyKpi();
-
-  const adIds = await adIdsForCampaigns(campaigns);
-  if (adIds.length === 0) return emptyKpi();
-
-  const totals: KpiTotals = emptyKpi();
-  // Supabase has a 1000 row limit per select; we need aggregates. Use rpc? We'll use postgres_aggregation via select with range.
-  // Simpler: loop with pagination by date ranges — acceptable volume.
-  const pageSize = 1000;
-  let offset = 0;
-  for (;;) {
-    const { data, error } = await supabase
-      .from("ad_insights")
-      .select("impressions, clicks, spend, reach")
-      .in("ad_id", adIds)
-      .gte("date", params.from)
-      .lte("date", params.to)
-      .range(offset, offset + pageSize - 1);
-    if (error) throw error;
-    if (!data || data.length === 0) break;
-    for (const r of data) {
-      totals.spend += Number(r.spend ?? 0);
-      totals.impressions += Number(r.impressions ?? 0);
-      totals.clicks += Number(r.clicks ?? 0);
-      totals.reach += Number(r.reach ?? 0);
-    }
-    if (data.length < pageSize) break;
-    offset += pageSize;
+  if (campaigns.length === 0) {
+    return { current: emptyKpi(), previous: null, daily: [], lastSync: null };
   }
-  totals.ctr = totals.impressions ? totals.clicks / totals.impressions : 0;
-  totals.cpm = totals.impressions ? (totals.spend / totals.impressions) * 1000 : 0;
-  return totals;
-}
-
-export async function getDailySeries(params: {
-  brandCode: string;
-  from: string;
-  to: string;
-  campaignIds?: string[];
-}): Promise<DailyPoint[]> {
-  const supabase = getSupabase();
-  const campaigns = await resolveCampaignIds(params);
-  if (campaigns.length === 0) return [];
   const adIds = await adIdsForCampaigns(campaigns);
-  if (adIds.length === 0) return [];
-
-  const map = new Map<string, DailyPoint>();
-  const pageSize = 1000;
-  let offset = 0;
-  for (;;) {
-    const { data, error } = await supabase
-      .from("ad_insights")
-      .select("date, impressions, clicks, spend")
-      .in("ad_id", adIds)
-      .gte("date", params.from)
-      .lte("date", params.to)
-      .range(offset, offset + pageSize - 1);
-    if (error) throw error;
-    if (!data || data.length === 0) break;
-    for (const r of data) {
-      const k = r.date as string;
-      const cur = map.get(k) ?? { date: k, spend: 0, impressions: 0, clicks: 0 };
-      cur.spend += Number(r.spend ?? 0);
-      cur.impressions += Number(r.impressions ?? 0);
-      cur.clicks += Number(r.clicks ?? 0);
-      map.set(k, cur);
-    }
-    if (data.length < pageSize) break;
-    offset += pageSize;
+  if (adIds.length === 0) {
+    return { current: emptyKpi(), previous: null, daily: [], lastSync: null };
   }
-  return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+  const dayMs = 24 * 60 * 60 * 1000;
+  const fromDate = new Date(params.from);
+  const toDate = new Date(params.to);
+  const span = Math.max(1, Math.round((toDate.getTime() - fromDate.getTime()) / dayMs) + 1);
+  const prevTo = new Date(fromDate.getTime() - dayMs);
+  const prevFrom = new Date(prevTo.getTime() - (span - 1) * dayMs);
+
+  const [currentRows, previousRows] = await Promise.all([
+    fetchInsightsByDate(adIds, params.from, params.to),
+    fetchInsightsByDate(adIds, toISO(prevFrom), toISO(prevTo)),
+  ]);
+
+  const current = aggregate(currentRows);
+  const previous = aggregate(previousRows);
+  const hasPrev = previousRows.length > 0;
+
+  // Zero-fill daily series across the requested range
+  const dailyMap = new Map<string, DailyPoint>();
+  for (let i = 0; i < span; i++) {
+    const d = new Date(fromDate.getTime() + i * dayMs);
+    const k = toISO(d);
+    dailyMap.set(k, { date: k, impressions: 0, clicks: 0, spend: 0 });
+  }
+  for (const r of currentRows) {
+    const k = r.date;
+    const cur = dailyMap.get(k);
+    if (!cur) continue;
+    cur.impressions += Number(r.impressions ?? 0);
+    cur.clicks += Number(r.clicks ?? 0);
+    cur.spend += Number(r.spend ?? 0);
+  }
+  const daily = Array.from(dailyMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+  const lastSync = currentRows.reduce<string | null>((acc, r) => {
+    return acc && acc > r.date ? acc : r.date;
+  }, null);
+
+  return {
+    current,
+    previous: hasPrev ? previous : null,
+    daily,
+    lastSync,
+  };
 }
 
 export async function getTopAds(params: {
@@ -137,11 +125,12 @@ export async function getTopAds(params: {
   limit?: number;
 }): Promise<TopAd[]> {
   const supabase = getSupabase();
-  const { data: campaigns, error: cerr } = await supabase
+  let cq = supabase
     .from("cargo_campaigns_classified")
     .select("campaign_id, campaign_name, type")
-    .eq("client_code", params.brandCode)
-    .eq(params.type ? "type" : "client_code", params.type ?? params.brandCode);
+    .eq("client_code", params.brandCode);
+  if (params.type) cq = cq.eq("type", params.type);
+  const { data: campaigns, error: cerr } = await cq;
   if (cerr) throw cerr;
   if (!campaigns || campaigns.length === 0) return [];
   const campaignMap = new Map(campaigns.map((c) => [c.campaign_id as string, c]));
@@ -156,7 +145,6 @@ export async function getTopAds(params: {
 
   const adGroupIds = Array.from(adGroupToCampaign.keys());
   const ads: { id: string; name: string | null; preview_url: string | null; format: string | null; ad_group_id: string }[] = [];
-  // Ads can be many, fetch by chunks of 500 ad_group_ids
   for (let i = 0; i < adGroupIds.length; i += 500) {
     const chunk = adGroupIds.slice(i, i + 500);
     const { data, error } = await supabase
@@ -169,7 +157,6 @@ export async function getTopAds(params: {
   if (ads.length === 0) return [];
   const adMap = new Map(ads.map((a) => [a.id, a]));
 
-  // Aggregate insights
   const adIds = ads.map((a) => a.id);
   const agg = new Map<string, { impressions: number; clicks: number; spend: number }>();
   for (let i = 0; i < adIds.length; i += 500) {
@@ -259,6 +246,50 @@ async function adIdsForCampaigns(campaignIds: string[]): Promise<string[]> {
   return result;
 }
 
+async function fetchInsightsByDate(adIds: string[], from: string, to: string) {
+  const supabase = getSupabase();
+  const rows: { date: string; impressions: number | null; clicks: number | null; spend: number | null }[] = [];
+  for (let i = 0; i < adIds.length; i += 500) {
+    const chunk = adIds.slice(i, i + 500);
+    const pageSize = 1000;
+    let offset = 0;
+    for (;;) {
+      const { data, error } = await supabase
+        .from("ad_insights")
+        .select("date, impressions, clicks, spend")
+        .in("ad_id", chunk)
+        .gte("date", from)
+        .lte("date", to)
+        .range(offset, offset + pageSize - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      rows.push(...data);
+      if (data.length < pageSize) break;
+      offset += pageSize;
+    }
+  }
+  return rows;
+}
+
+function aggregate(rows: { impressions: number | null; clicks: number | null; spend: number | null }[]): KpiTotals {
+  const t: KpiTotals = emptyKpi();
+  for (const r of rows) {
+    t.impressions += Number(r.impressions ?? 0);
+    t.clicks += Number(r.clicks ?? 0);
+    t.spend += Number(r.spend ?? 0);
+  }
+  t.ctr = t.impressions ? t.clicks / t.impressions : 0;
+  t.cpm = t.impressions ? (t.spend / t.impressions) * 1000 : 0;
+  return t;
+}
+
 function emptyKpi(): KpiTotals {
   return { spend: 0, impressions: 0, clicks: 0, reach: 0, ctr: 0, cpm: 0 };
+}
+
+function toISO(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
