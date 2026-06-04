@@ -20,11 +20,7 @@ export default async function BrandLayout({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <TopBar
-        brandLabel={info.name}
-        eyebrow="Reporting média"
-        showBrandSwitch
-      />
+      <TopBar brand={info} eyebrow="Reporting média" showBrandSwitch />
       <div className="mx-auto w-full max-w-7xl px-6">
         <BrandTabs brand={brand} />
       </div>
