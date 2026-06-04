@@ -46,6 +46,29 @@ export type DashboardSnapshot = {
   lastSync: string | null;
 };
 
+/** Récupère la 1re date d'insight disponible pour une marque (toutes campagnes). */
+export async function getFirstInsightDate(brandCode: string): Promise<string | null> {
+  const campaignIds = await resolveCampaignIds({ brandCode });
+  if (campaignIds.length === 0) return null;
+  const adIds = await adIdsForCampaigns(campaignIds);
+  if (adIds.length === 0) return null;
+  const supabase = getSupabase();
+  let earliest: string | null = null;
+  for (let i = 0; i < adIds.length; i += 500) {
+    const chunk = adIds.slice(i, i + 500);
+    const { data, error } = await supabase
+      .from("ad_insights")
+      .select("date")
+      .in("ad_id", chunk)
+      .order("date", { ascending: true })
+      .limit(1);
+    if (error) throw error;
+    const d = data?.[0]?.date as string | undefined;
+    if (d && (!earliest || d < earliest)) earliest = d;
+  }
+  return earliest;
+}
+
 export async function listCargoCampaigns(brandCode: string) {
   const supabase = getSupabase();
   const { data, error } = await supabase

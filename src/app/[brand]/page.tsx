@@ -1,19 +1,30 @@
 import Link from "next/link";
 import { getBrand } from "@/lib/constants";
-import { getDashboardSnapshot, type DashboardSnapshot } from "@/lib/queries";
+import {
+  getDashboardSnapshot,
+  getFirstInsightDate,
+  type DashboardSnapshot,
+} from "@/lib/queries";
 import { KpiGrid } from "@/components/kpi-grid";
 import { Hero } from "@/components/hero";
 import { Footer } from "@/components/footer";
 import { Card, CardContent, SectionHeader } from "@/components/ui";
-import { defaultRange } from "@/lib/date-range";
+import { parseRange } from "@/lib/date-range";
 import { PlatformLogo } from "@/components/platform-logo";
+import { DateRangeForm } from "@/components/date-range-form";
 
 export const dynamic = "force-dynamic";
 
-export default async function BrandOverview({ params }: { params: Promise<{ brand: string }> }) {
+type Props = {
+  params: Promise<{ brand: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function BrandOverview({ params, searchParams }: Props) {
   const { brand } = await params;
+  const sp = await searchParams;
   const info = getBrand(brand)!;
-  const { from, to } = defaultRange(30);
+  const { from, to } = parseRange(sp);
 
   let snap: DashboardSnapshot = {
     current: { spend: 0, impressions: 0, clicks: 0, reach: 0, ctr: 0, cpm: 0 },
@@ -21,24 +32,51 @@ export default async function BrandOverview({ params }: { params: Promise<{ bran
     daily: [],
     lastSync: null,
   };
+  let earliest: string | null = null;
   try {
-    snap = await getDashboardSnapshot({ brandCode: brand, from, to });
+    [snap, earliest] = await Promise.all([
+      getDashboardSnapshot({ brandCode: brand, from, to }),
+      getFirstInsightDate(brand),
+    ]);
   } catch {}
 
   return (
     <>
       <Hero
         eyebrow="Vue d'ensemble"
-        title="Performance des 30 derniers jours"
-        accent={`pour ${info.name}.`}
+        title="Performance par marque,"
+        accent={`toutes plateformes.`}
         from={from}
         to={to}
         lastSync={snap.lastSync}
       />
 
+      <section className="pb-8">
+        <Card>
+          <CardContent>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
+                  Période
+                </div>
+                <div className="text-sm font-medium text-[var(--ink)] mt-1">
+                  {info.name} · vue agrégée
+                </div>
+              </div>
+              <DateRangeForm
+                from={from}
+                to={to}
+                variant="light"
+                earliestDate={earliest ?? undefined}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
       <section className="space-y-3 pb-12">
         <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
-          /00 · Indicateurs globaux
+          <span className="text-[var(--green-600)] mr-1">/00</span> Indicateurs globaux
         </div>
         <KpiGrid totals={snap.current} previous={snap.previous} daily={snap.daily} />
       </section>
@@ -61,9 +99,16 @@ export default async function BrandOverview({ params }: { params: Promise<{ bran
   );
 }
 
-function PlatformCard({ brand, platform }: { brand: string; platform: "meta" | "tiktok" | "dv360" }) {
+function PlatformCard({
+  brand,
+  platform,
+}: {
+  brand: string;
+  platform: "meta" | "tiktok" | "dv360";
+}) {
   const href = platform === "dv360" ? `/${brand}/programmatic` : `/${brand}/${platform}`;
-  const label = platform === "meta" ? "Meta Ads" : platform === "tiktok" ? "TikTok Ads" : "Programmatique";
+  const label =
+    platform === "meta" ? "Meta Ads" : platform === "tiktok" ? "TikTok Ads" : "Programmatique";
   const subtitle =
     platform === "meta"
       ? "Dark posts · Boosts · Créas"

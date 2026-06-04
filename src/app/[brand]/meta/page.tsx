@@ -1,6 +1,7 @@
 import { getBrand } from "@/lib/constants";
 import {
   getDashboardSnapshot,
+  getFirstInsightDate,
   getTopAds,
   listCargoCampaigns,
 } from "@/lib/queries";
@@ -33,7 +34,7 @@ export default async function MetaPage({ params, searchParams }: Props) {
   const campaigns = await listCargoCampaigns(brand).catch(() => []);
   const filter = selectedIds.length > 0 ? { campaignIds: selectedIds } : {};
 
-  const [snap, topDark, topBoost] = await Promise.all([
+  const [snap, topDark, topBoost, earliest] = await Promise.all([
     getDashboardSnapshot({ brandCode: brand, from, to, ...filter }).catch(() => ({
       current: { spend: 0, impressions: 0, clicks: 0, reach: 0, ctr: 0, cpm: 0 },
       previous: null,
@@ -42,6 +43,7 @@ export default async function MetaPage({ params, searchParams }: Props) {
     })),
     getTopAds({ brandCode: brand, from, to, type: "dark", limit: 6 }).catch(() => []),
     getTopAds({ brandCode: brand, from, to, type: "boost", limit: 6 }).catch(() => []),
+    getFirstInsightDate(brand).catch(() => null),
   ]);
 
   return (
@@ -70,7 +72,12 @@ export default async function MetaPage({ params, searchParams }: Props) {
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <CampaignFilter campaigns={campaigns} selected={selectedIds} />
-                <DateRangeForm from={from} to={to} variant="light" />
+                <DateRangeForm
+                  from={from}
+                  to={to}
+                  variant="light"
+                  earliestDate={earliest ?? undefined}
+                />
               </div>
             </div>
           </CardContent>
