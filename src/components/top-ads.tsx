@@ -10,22 +10,21 @@ export function TopAdsGrid({ ads, emptyLabel }: { ads: TopAd[]; emptyLabel: stri
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {ads.map((ad, idx) => (
         <Card key={ad.ad_id} className="overflow-hidden">
-          <div className="relative aspect-video w-full bg-[var(--bg-2)] flex items-center justify-center text-xs text-[var(--muted-2)]">
-            <div className="absolute top-2 left-2 font-display text-sm font-semibold text-[var(--green-600)] tabular-nums">
-              /0{idx + 1}
-            </div>
+          <div className="relative aspect-video w-full bg-[var(--bg-2)] flex items-center justify-center overflow-hidden text-xs text-[var(--muted-2)]">
             {ad.preview_url ? (
-              <a
-                href={ad.preview_url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-[var(--navy)] hover:text-[var(--green-600)] underline underline-offset-2"
-              >
-                Voir la créa
-              </a>
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={ad.preview_url}
+                alt={ad.ad_name}
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
             ) : (
               <span>Aperçu indisponible</span>
             )}
+            <div className="absolute top-2 left-2 font-display text-sm font-semibold text-[var(--green-600)] tabular-nums drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]">
+              /0{idx + 1}
+            </div>
           </div>
           <CardContent>
             <div className="flex items-start justify-between gap-2 mb-3">
