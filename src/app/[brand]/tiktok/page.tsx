@@ -6,7 +6,9 @@ import { Card, CardContent, Badge, SectionHeader } from "@/components/ui";
 import { Hero } from "@/components/hero";
 import { Footer } from "@/components/footer";
 import { PlatformLogo, PLATFORM_META } from "@/components/platform-logo";
+import { ExportMenu } from "@/components/export-menu";
 import type { DailyPoint, TopAd } from "@/lib/queries";
+import type { ExportSnapshot } from "@/lib/export";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +59,17 @@ export default async function TikTokPage({ params }: { params: Promise<{ brand: 
   };
   const daily = mockDaily();
 
+  const exportSnapshot: ExportSnapshot = {
+    brandName: info.name,
+    scope: "TikTok Ads",
+    from: daily[0].date,
+    to: daily[daily.length - 1].date,
+    kpis: { current: totals },
+    topDark: mockTop("dark"),
+    topBoost: mockTop("boost"),
+    note: "Données de démonstration — TikTok n'est pas encore connecté. Ne pas présenter ces chiffres.",
+  };
+
   return (
     <>
       <Hero
@@ -82,7 +95,10 @@ export default async function TikTokPage({ params }: { params: Promise<{ brand: 
                   </div>
                 </div>
               </div>
-              <Badge variant="soon">Aperçu — données fictives</Badge>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="soon">Aperçu — données fictives</Badge>
+                <ExportMenu snapshot={exportSnapshot} />
+              </div>
             </div>
           </CardContent>
         </Card>

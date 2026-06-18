@@ -12,6 +12,8 @@ export type ExportSnapshot = {
   topDark?: TopAd[];
   topBoost?: TopAd[];
   budget?: BudgetStatus | null;
+  /** Avertissement affiché en tête (ex. données de démonstration). */
+  note?: string;
 };
 
 // ---------- formatting helpers (fr, mais sobres pour rester lisibles par un LLM) ----------
@@ -54,6 +56,10 @@ export function buildMarkdown(s: ExportSnapshot): string {
     `Période : ${frDate(s.from)} → ${frDate(s.to)}${s.lastSync ? ` · données à jour au ${frDate(s.lastSync)}` : ""}`
   );
   lines.push("");
+  if (s.note) {
+    lines.push(`**⚠️ ${s.note}**`);
+    lines.push("");
+  }
   lines.push(
     `> Voici les données de performance média de **${s.brandName}** (${s.scope}) sur la période ci-dessus. ` +
       `Tu peux les analyser pour préparer une présentation client : synthèse des performances, points forts, ` +

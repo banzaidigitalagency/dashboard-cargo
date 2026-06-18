@@ -5,7 +5,9 @@ import { Card, CardContent, Badge, SectionHeader } from "@/components/ui";
 import { Hero } from "@/components/hero";
 import { Footer } from "@/components/footer";
 import { PlatformLogo, PLATFORM_META } from "@/components/platform-logo";
+import { ExportMenu } from "@/components/export-menu";
 import type { DailyPoint } from "@/lib/queries";
+import type { ExportSnapshot } from "@/lib/export";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -54,6 +56,15 @@ export default async function ProgrammaticPage({
   };
   const daily = mockDaily();
 
+  const exportSnapshot: ExportSnapshot = {
+    brandName: info.name,
+    scope: "Programmatique (DV360)",
+    from: daily[0].date,
+    to: daily[daily.length - 1].date,
+    kpis: { current: totals },
+    note: "Données de démonstration — DV360 n'est pas encore connecté. Ne pas présenter ces chiffres.",
+  };
+
   return (
     <>
       <Hero
@@ -79,7 +90,10 @@ export default async function ProgrammaticPage({
                   </div>
                 </div>
               </div>
-              <Badge variant="soon">Aperçu — données fictives</Badge>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="soon">Aperçu — données fictives</Badge>
+                <ExportMenu snapshot={exportSnapshot} />
+              </div>
             </div>
           </CardContent>
         </Card>
