@@ -18,8 +18,10 @@ import { Hero } from "@/components/hero";
 import { Footer } from "@/components/footer";
 import { Card, CardContent, SectionHeader } from "@/components/ui";
 import { PlatformLogo, PLATFORM_META } from "@/components/platform-logo";
+import { ExportMenu } from "@/components/export-menu";
 import { parseRange, parseCompare } from "@/lib/date-range";
 import { formatDate } from "@/lib/utils";
+import type { ExportSnapshot } from "@/lib/export";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +76,18 @@ export default async function MetaPage({ params, searchParams }: Props) {
         }
       : null;
 
+  const exportSnapshot: ExportSnapshot = {
+    brandName: info.name,
+    scope: "Meta Ads",
+    from,
+    to,
+    lastSync: snap.lastSync,
+    kpis: { current: snap.current, previous: snap.previous },
+    breakdown,
+    topDark,
+    topBoost,
+  };
+
   return (
     <>
       <Hero
@@ -98,7 +112,10 @@ export default async function MetaPage({ params, searchParams }: Props) {
                   <div className="text-xs text-[var(--muted)]">{PLATFORM_META.meta.subtitle}</div>
                 </div>
               </div>
-              <CampaignFilter campaigns={campaigns} selected={selectedIds} />
+              <div className="flex items-center gap-2 flex-wrap">
+                <CampaignFilter campaigns={campaigns} selected={selectedIds} />
+                <ExportMenu snapshot={exportSnapshot} />
+              </div>
             </div>
             <div className="border-t border-[var(--hairline)] pt-4">
               <PeriodBar

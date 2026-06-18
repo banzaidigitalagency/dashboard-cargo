@@ -15,7 +15,9 @@ import { Card, CardContent, SectionHeader } from "@/components/ui";
 import { parseRange, parseCompare } from "@/lib/date-range";
 import { PlatformLogo } from "@/components/platform-logo";
 import { PeriodBar } from "@/components/period-bar";
+import { ExportMenu } from "@/components/export-menu";
 import { formatDate } from "@/lib/utils";
+import type { ExportSnapshot } from "@/lib/export";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +63,16 @@ export default async function BrandOverview({ params, searchParams }: Props) {
         }
       : null;
 
+  const exportSnapshot: ExportSnapshot = {
+    brandName: info.name,
+    scope: "Vue d'ensemble",
+    from,
+    to,
+    lastSync: snap.lastSync,
+    kpis: { current: snap.current, previous: snap.previous },
+    budget,
+  };
+
   return (
     <>
       <Hero
@@ -75,14 +87,17 @@ export default async function BrandOverview({ params, searchParams }: Props) {
       <section className="pb-8">
         <Card>
           <CardContent>
-            <PeriodBar
-              from={from}
-              to={to}
-              cfrom={compareRange?.from}
-              cto={compareRange?.to}
-              comparing={!!compareRange}
-              earliestDate={earliest ?? undefined}
-            />
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <PeriodBar
+                from={from}
+                to={to}
+                cfrom={compareRange?.from}
+                cto={compareRange?.to}
+                comparing={!!compareRange}
+                earliestDate={earliest ?? undefined}
+              />
+              <ExportMenu snapshot={exportSnapshot} />
+            </div>
           </CardContent>
         </Card>
       </section>
